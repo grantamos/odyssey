@@ -24,6 +24,7 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.view.KeyEvent
 import android.view.MotionEvent
+import com.codebutler.odyssey.common.BitmapCache
 import com.codebutler.odyssey.common.BufferCache
 import com.codebutler.odyssey.common.kotlin.containsAny
 import com.sun.jna.Native
@@ -49,6 +50,7 @@ class RetroDroid(private val context: Context, coreFile: File) :
     private val timer = Timer()
     private val pressedKeys = mutableSetOf<Int>()
     private val videoBufferCache = BufferCache()
+    private val videoBitmapCache = BitmapCache()
     private val audioSampleBufferCache = BufferCache()
     private val variables: MutableMap<String, String> = mutableMapOf()
     private val handler = Handler()
@@ -271,7 +273,7 @@ class RetroDroid(private val context: Context, coreFile: File) :
             )
         }
         //Timber.d("onVideoRefresh: ${newBuffer.toHexString()}")
-        val bitmap = Bitmap.createBitmap(width, height, videoBitmapConfig)
+        val bitmap = videoBitmapCache.getBitmap(width, height, videoBitmapConfig)
         bitmap.copyPixelsFromBuffer(ByteBuffer.wrap(newBuffer))
         videoCallback?.invoke(bitmap)
     }
