@@ -94,8 +94,6 @@ class GameActivity : AppCompatActivity(), Choreographer.FrameCallback {
     private var retroDroid: RetroDroid? = null
     private var audioTrack: AudioTrack? = null
 
-    private var playing: Boolean = false // need to be atomic?
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
