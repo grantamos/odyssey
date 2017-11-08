@@ -31,8 +31,6 @@ import com.sun.jna.Native
 import timber.log.Timber
 import java.io.File
 import java.nio.ByteBuffer
-import java.util.Timer
-import java.util.TimerTask
 import kotlin.experimental.and
 
 /**
@@ -47,7 +45,6 @@ class RetroDroid(private val context: Context, coreFile: File) :
         Retro.InputStateCallback {
 
     private val retro: Retro
-    private val timer = Timer()
     private val pressedKeys = mutableSetOf<Int>()
     private val videoBufferCache = BufferCache()
     private val videoBitmapCache = BitmapCache()
@@ -57,7 +54,6 @@ class RetroDroid(private val context: Context, coreFile: File) :
 
     private var videoBitmapConfig: Bitmap.Config = Bitmap.Config.ARGB_8888
     private var videoBytesPerPixel: Int = 0
-    private var timerTask: TimerTask? = null
     private var region: Retro.Region? = null
     private var systemAVInfo: Retro.SystemAVInfo? = null
     private var systemInfo: Retro.SystemInfo? = null
@@ -145,23 +141,11 @@ class RetroDroid(private val context: Context, coreFile: File) :
         return saveRam
     }
 
-    fun start() {
-        val avInfo = systemAVInfo
-        if (timerTask != null || avInfo == null) {
-            return
-        }
-        val timerTask = object : TimerTask() {
-            override fun run() {
-                retro.run()
-            }
-        }
-        timer.scheduleAtFixedRate(timerTask, 0, 1000L / avInfo.timing.fps.toLong())
-        this.timerTask = timerTask
-    }
-
-    fun stop() {
-        timerTask?.cancel()
-        timer.purge()
+    /**
+     * Runs a single loop of the game. This should be scheduled with Choreographer.
+     */
+    fun run() {
+        retro.run()
     }
 
     override fun onGetLogInterface(): Retro.LogInterface? {

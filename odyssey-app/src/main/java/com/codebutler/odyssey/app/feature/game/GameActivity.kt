@@ -28,6 +28,7 @@ import android.media.AudioTrack
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
+import android.view.Choreographer
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -37,7 +38,6 @@ import android.widget.TextView
 import com.codebutler.odyssey.R
 import com.codebutler.odyssey.app.OdysseyApplication
 import com.codebutler.odyssey.app.OdysseyApplicationComponent
-import com.codebutler.odyssey.app.feature.common.FpsCalculator
 import com.codebutler.odyssey.common.kotlin.bindView
 import com.codebutler.odyssey.common.kotlin.isAllZeros
 import com.codebutler.odyssey.lib.core.CoreManager
@@ -61,7 +61,7 @@ import timber.log.Timber
 import java.io.File
 import javax.inject.Inject
 
-class GameActivity : AppCompatActivity() {
+class GameActivity : AppCompatActivity(), Choreographer.FrameCallback {
     private enum class RenderMode {
         IMAGE_VIEW,
         SURFACE_VIEW,
@@ -93,6 +93,8 @@ class GameActivity : AppCompatActivity() {
     private var game: Game? = null
     private var retroDroid: RetroDroid? = null
     private var audioTrack: AudioTrack? = null
+
+    private var playing: Boolean = false // need to be atomic?
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,12 +147,12 @@ class GameActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        retroDroid?.start()
+        Choreographer.getInstance().postFrameCallback(this)
     }
 
     override fun onPause() {
         super.onPause()
-        retroDroid?.stop()
+        Choreographer.getInstance().removeFrameCallback(this)
     }
 
     override fun onDestroy() {
@@ -158,6 +160,10 @@ class GameActivity : AppCompatActivity() {
 
         val saveData = retroDroid?.unloadGame()
         retroDroid?.deinit()
+        retroDroid = null
+
+        // Remove the animation callback if it was added
+        Choreographer.getInstance().removeFrameCallback(this)
 
         val game = this.game
         val saveCompletable = if (saveData != null && saveData.isAllZeros().not() && game != null) {
@@ -172,6 +178,13 @@ class GameActivity : AppCompatActivity() {
                     // This activity runs in its own process which should not live beyond the activity lifecycle.
                     System.exit(0)
                 }
+    }
+
+    override fun doFrame(frameTimeNanos: Long) {
+        if (retroDroid != null) {
+            retroDroid?.run()
+            Choreographer.getInstance().postFrameCallback(this)
+        }
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
@@ -257,10 +270,11 @@ class GameActivity : AppCompatActivity() {
         }
 
         retroDroid.loadGame(data.gameFile.absolutePath, data.saveData)
-        retroDroid.start()
 
         this.game = data.game
         this.retroDroid = retroDroid
+
+        Choreographer.getInstance().postFrameCallback(this)
     }
 
     @Suppress("ArrayInDataClass")
